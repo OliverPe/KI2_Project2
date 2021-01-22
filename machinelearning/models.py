@@ -137,14 +137,16 @@ class DigitClassificationModel(object):
     """
     def __init__(self):
         # Initialize your model parameters here
-        self.learning_rate = -0.1
-        self.batch_size = 200
+        self.learning_rate = -0.4
+        self.batch_size = 60
 
-        self.w1 = nn.Parameter(784, 300)
-        self.w2 = nn.Parameter(300, 10)
+        self.w1 = nn.Parameter(784, 250)
+        self.w2 = nn.Parameter(250, 100)
+        self.w3 = nn.Parameter(100, 10)
 
-        self.b1 = nn.Parameter(1, 300)
-        self.b2 = nn.Parameter(1, 10) 
+        self.b1 = nn.Parameter(1, 250)
+        self.b2 = nn.Parameter(1, 100)
+        self.b3 = nn.Parameter(1, 10) 
 
     def run(self, x):
         """
@@ -161,10 +163,12 @@ class DigitClassificationModel(object):
                 (also called logits)
         """
         xw_1 = nn.Linear(x, self.w1)
-        r_1 =  nn.AddBias(xw_1, self.b1)
+        r_1 =  nn.ReLU(nn.AddBias(xw_1, self.b1))
         xw_2 = nn.Linear(r_1, self.w2)
         r_2 =  nn.AddBias(xw_2, self.b2)
-        return r_2
+        xw_3 = nn.Linear(r_2, self.w3)
+        r_3 = nn.AddBias(xw_3, self.b3)
+        return r_3
         
 
     def get_loss(self, x, y):
@@ -190,12 +194,14 @@ class DigitClassificationModel(object):
         while True:
             for x, y in dataset.iterate_once(self.batch_size):
                 loss = self.get_loss(x, y)
-                g = nn.gradients(loss, [self.w1, self.w2, self.b1, self.b2])
+                g = nn.gradients(loss, [self.w1, self.w2, self.w3, self.b1, self.b2, self.b3])
                 self.w1.update(g[0], self.learning_rate)
                 self.w2.update(g[1], self.learning_rate)
-                self.b1.update(g[2], self.learning_rate)
-                self.b2.update(g[3], self.learning_rate)
-                if (dataset.get_validation_accuracy() >= 0.97):
+                self.w3.update(g[2], self.learning_rate)
+                self.b1.update(g[3], self.learning_rate)
+                self.b2.update(g[4], self.learning_rate)
+                self.b3.update(g[5], self.learning_rate)
+                if (dataset.get_validation_accuracy() >= 0.975):
                     return
 
 class LanguageIDModel(object):
