@@ -223,6 +223,13 @@ class LanguageIDModel(object):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
 
+
+        self.w = nn.Parameter(self.num_chars, 400) 
+        self.w_h = nn.Parameter(400, 400)
+        self.w_f = nn.Parameter(400, 5)
+
+        self.batch_size = 5
+
     def run(self, xs):
         """
         Runs the model for a batch of examples.
@@ -253,6 +260,14 @@ class LanguageIDModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+        print(xs[0])
+        h = nn.Linear(xs[0], self.w)
+        z = h
+        for x in xs[1:]:
+            z = nn.Add(nn.Linear(x, self.w), nn.Linear(z, self.w_h))
+        return nn.Linear(z, self.w_f)
+
+
 
     def get_loss(self, xs, y):
         """
