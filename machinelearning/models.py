@@ -122,6 +122,7 @@ class RegressionModel(object):
                 loss = nn.as_scalar(self.get_loss(x, y))
                 if (loss < 0.01):
                     return
+
 class DigitClassificationModel(object):
     """
     A model for handwritten digit classification using the MNIST dataset.
@@ -138,16 +139,14 @@ class DigitClassificationModel(object):
     """
     def __init__(self):
         # Initialize your model parameters here
-        self.learning_rate = -0.4
-        self.batch_size = 60
+        self.learning_rate = -0.6
+        self.batch_size = 600
 
-        self.w1 = nn.Parameter(784, 250)
-        self.w2 = nn.Parameter(250, 100)
-        self.w3 = nn.Parameter(100, 10)
+        self.w1 = nn.Parameter(784, 196)
+        self.w2 = nn.Parameter(196, 10)
 
-        self.b1 = nn.Parameter(1, 250)
-        self.b2 = nn.Parameter(1, 100)
-        self.b3 = nn.Parameter(1, 10) 
+        self.b1 = nn.Parameter(1, 196)
+        self.b2 = nn.Parameter(1, 10)
 
     def run(self, x):
         """
@@ -167,9 +166,7 @@ class DigitClassificationModel(object):
         r_1 =  nn.ReLU(nn.AddBias(xw_1, self.b1))
         xw_2 = nn.Linear(r_1, self.w2)
         r_2 =  nn.AddBias(xw_2, self.b2)
-        xw_3 = nn.Linear(r_2, self.w3)
-        r_3 = nn.AddBias(xw_3, self.b3)
-        return r_3
+        return r_2
         
 
     def get_loss(self, x, y):
@@ -193,17 +190,16 @@ class DigitClassificationModel(object):
         Trains the model.
         """
         while True:
+            acc = dataset.get_validation_accuracy()
+            if (acc > 0.975):
+                return
             for x, y in dataset.iterate_once(self.batch_size):
                 loss = self.get_loss(x, y)
-                g = nn.gradients(loss, [self.w1, self.w2, self.w3, self.b1, self.b2, self.b3])
+                g = nn.gradients(loss, [self.w1, self.w2, self.b1, self.b2])
                 self.w1.update(g[0], self.learning_rate)
                 self.w2.update(g[1], self.learning_rate)
-                self.w3.update(g[2], self.learning_rate)
-                self.b1.update(g[3], self.learning_rate)
-                self.b2.update(g[4], self.learning_rate)
-                self.b3.update(g[5], self.learning_rate)
-                if (dataset.get_validation_accuracy() >= 0.975):
-                    return
+                self.b1.update(g[2], self.learning_rate)
+                self.b2.update(g[3], self.learning_rate)
 
 class LanguageIDModel(object):
     """
@@ -230,7 +226,7 @@ class LanguageIDModel(object):
         self.w_h2 = nn.Parameter(400, 400)
         self.w_f = nn.Parameter(400, 5)
 
-        self.batch_size = 100
+        self.batch_size = 200
 
     def run(self, xs):
         """
@@ -297,9 +293,9 @@ class LanguageIDModel(object):
         """
         "*** YOUR CODE HERE ***"
         while True:
-            for x, y in dataset.iterate_once(self.batch_size):
-                if (dataset.get_validation_accuracy() > 0.81):
+            if (dataset.get_validation_accuracy() > 0.83):
                         return
+            for x, y in dataset.iterate_once(self.batch_size):
                 loss = self.get_loss(x, y)
                 g = nn.gradients(loss, [self.w, self.w_h1, self.w_h2, self.w_f])
                 self.w.update(g[0], self.learning_rate)
