@@ -68,7 +68,8 @@ class RegressionModel(object):
     def __init__(self):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
-        self.learning_rate = -0.01
+        self.learning_rate = -0.005
+        self.batch_size = 100
         self.w1 = nn.Parameter(1, 20)
         self.w2 = nn.Parameter(20, 1)
 
@@ -110,17 +111,17 @@ class RegressionModel(object):
         """
         "*** YOUR CODE HERE ***"
         loss = float('inf')
-        while (loss > 0.01):
-            x = nn.Constant(dataset.x)
-            y = nn.Constant(dataset.y)
-            loss = self.get_loss(x, y)
-            g = nn.gradients(loss, [self.w1, self.w2, self.b1, self.b2])
-            self.w1.update(g[0], self.learning_rate)
-            self.w2.update(g[1], self.learning_rate)
-            self.b1.update(g[2], self.learning_rate)
-            self.b2.update(g[3], self.learning_rate)
-            loss = nn.as_scalar(self.get_loss(x, y))
-
+        while True:
+            for x, y in dataset.iterate_once(self.batch_size):
+                loss = self.get_loss(x, y)
+                g = nn.gradients(loss, [self.w1, self.w2, self.b1, self.b2])
+                self.w1.update(g[0], self.learning_rate)
+                self.w2.update(g[1], self.learning_rate)
+                self.b1.update(g[2], self.learning_rate)
+                self.b2.update(g[3], self.learning_rate)
+                loss = nn.as_scalar(self.get_loss(x, y))
+                if (loss < 0.01):
+                    return
 class DigitClassificationModel(object):
     """
     A model for handwritten digit classification using the MNIST dataset.
@@ -222,13 +223,13 @@ class LanguageIDModel(object):
 
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
-        self.learning_rate = -0.05
+        self.learning_rate = -0.006
 
-        self.w = nn.Parameter(self.num_chars, 400) 
-        self.w_h = nn.Parameter(400, 400)
-        self.w_f = nn.Parameter(400, 5)
+        self.w = nn.Parameter(self.num_chars, 300) 
+        self.w_h = nn.Parameter(300, 300)
+        self.w_f = nn.Parameter(300, 5)
 
-        self.batch_size = 10
+        self.batch_size = 2
 
     def run(self, xs):
         """
