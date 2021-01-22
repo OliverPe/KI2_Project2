@@ -122,7 +122,6 @@ class RegressionModel(object):
                 loss = nn.as_scalar(self.get_loss(x, y))
                 if (loss < 0.01):
                     return
-
 class DigitClassificationModel(object):
     """
     A model for handwritten digit classification using the MNIST dataset.
@@ -139,14 +138,16 @@ class DigitClassificationModel(object):
     """
     def __init__(self):
         # Initialize your model parameters here
-        self.learning_rate = -0.6
-        self.batch_size = 600
+        self.learning_rate = -0.4
+        self.batch_size = 60
 
-        self.w1 = nn.Parameter(784, 196)
-        self.w2 = nn.Parameter(196, 10)
+        self.w1 = nn.Parameter(784, 250)
+        self.w2 = nn.Parameter(250, 100)
+        self.w3 = nn.Parameter(100, 10)
 
-        self.b1 = nn.Parameter(1, 196)
-        self.b2 = nn.Parameter(1, 10)
+        self.b1 = nn.Parameter(1, 250)
+        self.b2 = nn.Parameter(1, 100)
+        self.b3 = nn.Parameter(1, 10) 
 
     def run(self, x):
         """
@@ -166,7 +167,9 @@ class DigitClassificationModel(object):
         r_1 =  nn.ReLU(nn.AddBias(xw_1, self.b1))
         xw_2 = nn.Linear(r_1, self.w2)
         r_2 =  nn.AddBias(xw_2, self.b2)
-        return r_2
+        xw_3 = nn.Linear(r_2, self.w3)
+        r_3 = nn.AddBias(xw_3, self.b3)
+        return r_3
         
 
     def get_loss(self, x, y):
@@ -190,21 +193,21 @@ class DigitClassificationModel(object):
         Trains the model.
         """
         while True:
-            acc = dataset.get_validation_accuracy()
-            if (acc > 0.975):
-                return
             for x, y in dataset.iterate_once(self.batch_size):
                 loss = self.get_loss(x, y)
-                g = nn.gradients(loss, [self.w1, self.w2, self.b1, self.b2])
+                g = nn.gradients(loss, [self.w1, self.w2, self.w3, self.b1, self.b2, self.b3])
                 self.w1.update(g[0], self.learning_rate)
                 self.w2.update(g[1], self.learning_rate)
-                self.b1.update(g[2], self.learning_rate)
-                self.b2.update(g[3], self.learning_rate)
+                self.w3.update(g[2], self.learning_rate)
+                self.b1.update(g[3], self.learning_rate)
+                self.b2.update(g[4], self.learning_rate)
+                self.b3.update(g[5], self.learning_rate)
+                if (dataset.get_validation_accuracy() >= 0.975):
+                    return
 
 class LanguageIDModel(object):
     """
     A model for language identification at a single-word granularity.
-
     (See RegressionModel for more information about the APIs of different
     methods here. We recommend that you implement the RegressionModel before
     working on this part of the project.)
@@ -219,22 +222,24 @@ class LanguageIDModel(object):
 
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
-        self.learning_rate = -0.009
+        self.batch_size = 100
+        self.learning_rate = -0.1
 
-        self.w = nn.Parameter(self.num_chars, 400) 
-        self.w_h1 = nn.Parameter(400, 400)
-        self.w_h2 = nn.Parameter(400, 400)
-        self.w_f = nn.Parameter(400, 5)
-
-        self.batch_size = 200
+        self.initial_w = nn.Parameter(self.num_chars, 200)
+        self.initial_b = nn.Parameter(1, 200)
+        self.x_w = nn.Parameter(self.num_chars, 200)
+        self.h_w = nn.Parameter(200, 200)
+        self.b = nn.Parameter(1, 200)
+        self.output_w = nn.Parameter(200, len(self.languages))
+        self.output_b = nn.Parameter(1, len(self.languages))
+        self.params = [self.initial_w, self.initial_b, self.x_w, self.h_w,
+                       self.b, self.output_w, self.output_b]
 
     def run(self, xs):
         """
         Runs the model for a batch of examples.
-
         Although words have different lengths, our data processing guarantees
         that within a single batch, all words will be of the same length (L).
-
         Here `xs` will be a list of length L. Each element of `xs` will be a
         node with shape (batch_size x self.num_chars), where every row in the
         array is a one-hot vector encoding of a character. For example, if we
@@ -243,13 +248,11 @@ class LanguageIDModel(object):
         index 7 reflects the fact that "cat" is the last word in the batch, and
         the index 0 reflects the fact that the letter "a" is the inital (0th)
         letter of our combined alphabet for this task.
-
         Your model should use a Recurrent Neural Network to summarize the list
         `xs` into a single node of shape (batch_size x hidden_size), for your
         choice of hidden_size. It should then calculate a node of shape
         (batch_size x 5) containing scores, where higher scores correspond to
         greater probability of the word originating from a particular language.
-
         Inputs:
             xs: a list with L elements (one per character), where each element
                 is a node with shape (batch_size x self.num_chars)
@@ -258,25 +261,19 @@ class LanguageIDModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
-        h = nn.Linear(xs[0], self.w)
-        z = nn.ReLU(h)
+        h_i = nn.ReLU(nn.AddBias(nn.Linear(xs[0], self.initial_w), self.initial_b))
         for x in xs[1:]:
-            z = nn.Add(nn.Linear(x, self.w), nn.Linear(z, self.w_h1))
-        z1 = z
-        for x in xs[1:]:
-            z1 = nn.Add(nn.Linear(z, self.w_h1), nn.Linear(z1, self.w_h2))
-        return nn.Linear(z1, self.w_f)
-
-
+            h_i = nn.ReLU(nn.AddBias(nn.Add(nn.Linear(x, self.x_w),\
+                          nn.Linear(h_i, self.h_w)), self.b))
+        return nn.AddBias(nn.Linear(h_i, self.output_w), self.output_b)
+        
 
     def get_loss(self, xs, y):
         """
         Computes the loss for a batch of examples.
-
         The correct labels `y` are represented as a node with shape
         (batch_size x 5). Each row is a one-hot vector encoding the correct
         language.
-
         Inputs:
             xs: a list with L elements (one per character), where each element
                 is a node with shape (batch_size x self.num_chars)
@@ -284,7 +281,6 @@ class LanguageIDModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
-
         return nn.SoftmaxLoss(self.run(xs), y)
 
     def train(self, dataset):
@@ -292,16 +288,14 @@ class LanguageIDModel(object):
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
-        while True:
-            if (dataset.get_validation_accuracy() > 0.83):
-                        return
+        loss = float('inf')
+        valid_acc = 0
+        while dataset.get_validation_accuracy() < 0.85:
             for x, y in dataset.iterate_once(self.batch_size):
                 loss = self.get_loss(x, y)
-                g = nn.gradients(loss, [self.w, self.w_h1, self.w_h2, self.w_f])
-                self.w.update(g[0], self.learning_rate)
-                self.w_h1.update(g[1], self.learning_rate)
-                self.w_h2.update(g[2], self.learning_rate)
-                self.w_f.update(g[3], self.learning_rate)
+                grads = nn.gradients(loss, self.params)
+                for i in range(len(self.params)):
+                    self.params[i].update(grads[i], self.learning_rate)
                 
             
 
