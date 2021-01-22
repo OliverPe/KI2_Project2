@@ -223,13 +223,14 @@ class LanguageIDModel(object):
 
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
-        self.learning_rate = -0.006
+        self.learning_rate = -0.009
 
-        self.w = nn.Parameter(self.num_chars, 300) 
-        self.w_h = nn.Parameter(300, 300)
-        self.w_f = nn.Parameter(300, 5)
+        self.w = nn.Parameter(self.num_chars, 400) 
+        self.w_h1 = nn.Parameter(400, 400)
+        self.w_h2 = nn.Parameter(400, 400)
+        self.w_f = nn.Parameter(400, 5)
 
-        self.batch_size = 2
+        self.batch_size = 100
 
     def run(self, xs):
         """
@@ -264,8 +265,11 @@ class LanguageIDModel(object):
         h = nn.Linear(xs[0], self.w)
         z = nn.ReLU(h)
         for x in xs[1:]:
-            z = nn.Add(nn.Linear(x, self.w), nn.Linear(z, self.w_h))
-        return nn.Linear(z, self.w_f)
+            z = nn.Add(nn.Linear(x, self.w), nn.Linear(z, self.w_h1))
+        z1 = z
+        for x in xs[1:]:
+            z1 = nn.Add(nn.Linear(z, self.w_h1), nn.Linear(z1, self.w_h2))
+        return nn.Linear(z1, self.w_f)
 
 
 
@@ -294,12 +298,14 @@ class LanguageIDModel(object):
         "*** YOUR CODE HERE ***"
         while True:
             for x, y in dataset.iterate_once(self.batch_size):
-                    loss = self.get_loss(x, y)
-                    g = nn.gradients(loss, [self.w, self.w_h, self.w_f])
-                    self.w.update(g[0], self.learning_rate)
-                    self.w_h.update(g[1], self.learning_rate)
-                    self.w_f.update(g[2], self.learning_rate)
-                    if (dataset.get_validation_accuracy() >= 0.82):
+                if (dataset.get_validation_accuracy() > 0.81):
                         return
+                loss = self.get_loss(x, y)
+                g = nn.gradients(loss, [self.w, self.w_h1, self.w_h2, self.w_f])
+                self.w.update(g[0], self.learning_rate)
+                self.w_h1.update(g[1], self.learning_rate)
+                self.w_h2.update(g[2], self.learning_rate)
+                self.w_f.update(g[3], self.learning_rate)
+                
             
 
